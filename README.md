@@ -1,6 +1,7 @@
 # Offline Android TV Media Server
 
-An offline media server for an Android TV box. It creates a Wi‑Fi hotspot at 192.168.50.1 and serves Shows, Movies, and Music from external storage. The box can still be used as a regular Android TV.
+An offline media server for an Android TV box. It creates a Wi‑Fi hotspot at 192.168.50.1 and serves Shows, Movies, and Music from external storage. The box can still be used as a regular Android TV, based on the Mortal T1 TVBOX
+Based on the idea of Pocket Nomad
 
 ## Features
 - Hotspot at 192.168.50.1 with DHCP
@@ -24,3 +25,8 @@ An offline media server for an Android TV box. It creates a Wi‑Fi hotspot at 1
 - `SD/`: Web UI (tv.html, tv-shows.html, tv-movies.html, tv-music.html, assets)
 - `init.hotspot.sh`: Hotspot + dnsmasq + iptables + lighttpd startup
 - `lighttpd.conf`, `dnsmasq/`, etc.: Server configs and helpers
+
+## License
+
+Licensed under the Apache License, Version 2.0. See `LICENSE` for terms. 
+Attribution notices are provided in `NOTICE`; please retain them in distributions and derivative works.
