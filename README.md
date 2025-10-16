@@ -11,6 +11,7 @@ Based on the idea of Pocket Nomad
 - Direct playback via lighttpd; SRT subtitles auto‑detected and toggleable
 - Works from SD/USB without changing your folder structure
 - Optional DNS hijack to resolve all names to the box (captive‑portal style)
+- Right now only support the SD card and not any USB
 
 ## Quick start
 1) Copy the contents of `SD/` to the root of your external drive on the device (e.g., `/storage/<ID>`).
