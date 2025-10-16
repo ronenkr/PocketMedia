@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Media Hub</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <style>
+    :root{--primary:#007bff;--primary-dark:#0056b3;--bg:#0f172a;--card:#111827;--text:#e5e7eb;--muted:#94a3b8;--radius:14px;--shadow:0 10px 30px rgba(0,0,0,.3);} 
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:linear-gradient(180deg,#0b1220,#0b1220 40%,#0e1630);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+    header{padding:24px 16px;display:flex;align-items:center;justify-content:space-between;}
+    header h1{font-size:clamp(1.25rem,4vw,1.75rem);font-weight:700;letter-spacing:.3px}
+    main{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(160px,280px));gap:20px;max-width:1000px;width:100%}
+    @media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(140px,1fr))}}
+    @media(max-width:520px){.grid{grid-template-columns:1fr}}
+    a.card{display:flex;flex-direction:column;gap:14px;text-decoration:none;color:var(--text);background:linear-gradient(180deg,#151b2e,#0e1425);border:1px solid #1f2937;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease}
+    a.card:hover{transform:translateY(-4px);border-color:#2f3b52;box-shadow:0 14px 40px rgba(0,0,0,.35)}
+    .card h2{font-size:1.25rem}
+    .card p{color:var(--muted);font-size:.95rem;line-height:1.35}
+    footer{color:#94a3b8;text-align:center;padding:18px}
+  </style>
+  <meta name="description" content="Media hub for Shows, Movies, and Music">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
+  <script>
+    // Ensure back button goes to device menu if available
+    function goMenu(){ location.href = 'http://192.168.50.1/menu'; }
+  </script>
+  </head>
+<body>
+  <header>
+    <h1>Media Hub</h1>
+    <button onclick="goMenu()" style="background:#1f2937;color:#e5e7eb;border:1px solid #2b364b;border-radius:8px;padding:.5rem .75rem;cursor:pointer">← Menu</button>
+  </header>
+  <main>
+    <div class="grid">
+      <a class="card" href="tv-shows.html">
+        <div>
+          <h2>Shows</h2>
+          <p>Browse series by folder, pick episodes, and play with optional SRT subtitles.</p>
+        </div>
+      </a>
+      <a class="card" href="tv-movies.html">
+        <div>
+          <h2>Movies</h2>
+          <p>One-tap movie playback. Poster auto-detected if named the same as the file.</p>
+        </div>
+      </a>
+      <a class="card" href="tv-music.html">
+        <div>
+          <h2>Music</h2>
+          <p>Simple, reliable audio player with quick search.</p>
+        </div>
+      </a>
+    </div>
+  </main>
+  <footer>© <span id="y"></span></footer>
+  <script>document.getElementById('y').textContent=new Date().getFullYear()</script>
+</body>
+</html>

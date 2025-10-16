@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movies</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <style>
+    :root{--primary:#007bff;--bg:#0b1220;--panel:#0f172a;--text:#e5e7eb;--muted:#94a3b8;--radius:12px;--shadow:0 10px 30px rgba(0,0,0,.3);} 
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+    header{padding:20px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:linear-gradient(180deg,#0b1220,#0b1220f2);backdrop-filter:saturate(140%) blur(6px);z-index:10}
+    a.back{color:#e5e7eb;text-decoration:none;background:#111827;border:1px solid #223049;padding:.45rem .7rem;border-radius:8px}
+    .toolbar{display:flex;gap:.6rem;flex-wrap:wrap;padding:10px 16px;background:#0c1428;border-top:1px solid #1e2a3f;border-bottom:1px solid #1e2a3f;position:sticky;top:64px;z-index:9}
+    .toolbar input,.toolbar select{background:#0f1a32;border:1px solid #223049;color:#e5e7eb;border-radius:8px;padding:.5rem .6rem}
+    main{flex:1;max-width:1200px;margin:0 auto;width:100%;padding:16px}
+    .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+    .card{background:linear-gradient(180deg,#121a30,#0f172a);border:1px solid #1e2a3f;border-radius:12px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow);transition:transform .2s ease}
+    .card:hover{transform:translateY(-3px)}
+    .thumb{width:100%;aspect-ratio:2/3;object-fit:cover;display:block}
+    .video-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:1000}
+    .video-content{background:#0f172a;border:1px solid #1f2a40;border-radius:12px;padding:16px;width:min(96vw,1100px)}
+    video{width:100%;height:auto;max-height:80dvh;border-radius:10px;background:#000;object-fit:contain}
+    @media (orientation: landscape){
+      video{max-height:90dvh}
+    }
+    .row{display:flex;gap:.5rem;align-items:center;justify-content:space-between;margin-top:8px}
+    .row .left{display:flex;gap:.5rem;align-items:center}
+    button{background:#1a2a44;color:#e5e7eb;border:1px solid #2a3a58;padding:.45rem .7rem;border-radius:8px;cursor:pointer}
+    select{background:#0f1a32;border:1px solid #223049;color:#e5e7eb;border-radius:8px;padding:.45rem .7rem}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Movies</h1>
+    <a class="back" href="tv.html">← Hub</a>
+  </header>
+
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Search movies…" aria-label="Search movies">
+    <select id="sort">
+      <option value="az">A → Z</option>
+      <option value="za">Z → A</option>
+    </select>
+  </div>
+
+  <main>
+    <div id="grid" class="grid"></div>
+  </main>
+
+  <div id="vm" class="video-modal">
+    <div class="video-content">
+    <video id="player" controls preload="metadata" playsinline webkit-playsinline x5-playsinline></video>
+      <div class="row">
+        <div class="left" id="subWrap" style="display:none">
+          <label for="subSel">Subtitles:</label>
+          <select id="subSel"><option value="off">Off</option></select>
+        </div>
+        <div>
+      <button id="fsBtn" title="Fullscreen">⛶ Fullscreen</button>
+          <button onclick="dlCurrent()">Download</button>
+          <button onclick="closeVideo()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const exts = ['.mp4','.mkv','.avi','.mov','.webm'];
+    const grid = document.getElementById('grid');
+    const q = document.getElementById('q');
+    const sortSel = document.getElementById('sort');
+  const modal = document.getElementById('vm');
+    const player = document.getElementById('player');
+    const subSel = document.getElementById('subSel');
+  const subWrap = document.getElementById('subWrap');
+    let items = [], view = [], current = null;
+
+  function isVideo(n){return exts.some(e=>n.toLowerCase().endsWith(e));}
+  function mediaUrl(p){return encodeURI('/' + p)}
+    function posterFor(base){
+      const tryList = ['.jpg','.jpeg','.png','.webp'];
+      for (const ext of tryList) return `${base}${ext}`;
+    }
+    function srtCandidates(base){return [`${base}.srt`, `${base}.SRT`];}
+
+    async function list(path){
+      // Rely on lighttpd dir listing for Movies/
+      const res = await fetch(path);
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html,'text/html');
+      const hrefs = [...doc.querySelectorAll('a')].map(a=>a.getAttribute('href')).filter(Boolean);
+      // Normalize to names within this folder (support absolute or relative hrefs)
+      const entries = hrefs
+        .filter(h => !h.startsWith('?'))
+        .map(h => decodeURIComponent(h))
+        .map(h => h.split('?')[0]);
+      return entries
+        .filter(h => !['..','../','.','./'].includes(h))
+        .map(h => h.split('/').filter(Boolean).pop() + (h.endsWith('/') ? '/' : ''))
+        .filter(Boolean);
+    }
+
+    async function scanMovies(){
+      const base = 'Movies/';
+      const entries = await list(base);
+      const vids = entries.filter(isVideo);
+      items = vids.map(v=>{
+        const name = v.replace(/\.[^/.]+$/, '');
+        return { name, file: base+v, cover: `${base}${name}.jpg` };
+      }).sort((a,b)=>a.name.localeCompare(b.name));
+      apply('');
+    }
+
+    function apply(term){
+      const t = term.trim().toLowerCase();
+      view = items.filter(i=>!t || i.name.toLowerCase().includes(t));
+      if (sortSel.value==='za') view.sort((a,b)=>b.name.localeCompare(a.name));
+      else view.sort((a,b)=>a.name.localeCompare(b.name));
+      render();
+    }
+
+    function render(){
+      const frag = document.createDocumentFragment();
+      view.forEach(it=>{
+        const d = document.createElement('div');
+        d.className = 'card';
+        d.innerHTML = `<img class="thumb" loading="lazy" alt="${it.name}" src="${it.cover}" onerror="this.style.display='none'">`;
+        d.onclick = ()=>openVideo(it);
+        frag.appendChild(d);
+      });
+      grid.innerHTML = '';
+      grid.appendChild(frag);
+    }
+
+    function resetTracks() {
+      while(player.firstChild) player.removeChild(player.firstChild);
+    }
+
+    function addSubTrack(label, src) {
+      const track = document.createElement('track');
+      track.kind = 'subtitles';
+      track.label = label;
+      track.srclang = 'en';
+      track.src = src;
+      player.appendChild(track);
+      return track;
+    }
+
+    function srtToVtt(srt){
+      const blocks = srt.replace(/\r/g,'').split('\n\n');
+      const out = blocks.map(b=>{
+        const lines = b.split('\n');
+        // Drop numeric cue id if present
+        if(lines[0] && /^\d+$/.test(lines[0])) lines.shift();
+        // Find timing line and convert commas to dots
+        for(let i=0;i<lines.length;i++){
+          if(lines[i].includes('-->')){
+            lines[i] = lines[i].replace(/,(\d{3})/g, '.$1');
+            break;
+          }
+        }
+        return lines.join('\n');
+      }).join('\n\n');
+      return 'WEBVTT\n\n' + out;
+    }
+
+    async function loadSubtitles(movie){
+      // Try SRT alongside the movie (same basename)
+      const base = movie.file.replace(/\.[^/.]+$/, '');
+      const cands = srtCandidates(base);
+      subSel.innerHTML = '<option value="off">Off</option>';
+      let blobUrl = null;
+      subWrap.style.display = 'none';
+      for(const s of cands){
+        try{
+          const res = await fetch('/' + s); // get raw srt
+          if(res.ok){
+            const text = await res.text();
+            const vtt = srtToVtt(text);
+            const blob = new Blob([vtt], { type: 'text/vtt' });
+            blobUrl = URL.createObjectURL(blob);
+            const opt = document.createElement('option');
+            opt.value = blobUrl; opt.textContent = 'English';
+            subSel.appendChild(opt);
+            subWrap.style.display = '';
+            // Auto-select and enable the subtitles immediately
+            subSel.value = blobUrl;
+            subSel.dispatchEvent(new Event('change'));
+            break;
+          }
+        }catch(_){/* ignore */}
+      }
+      return blobUrl;
+    }
+
+    async function openVideo(movie){
+      current = movie;
+      player.pause();
+      player.removeAttribute('src');
+      resetTracks();
+      player.load();
+      const src = mediaUrl(movie.file);
+      player.src = src;
+      await loadSubtitles(movie);
+      modal.style.display = 'flex';
+      player.play().catch(()=>{});
+    }
+    function closeVideo(){
+      player.pause();
+      player.removeAttribute('src');
+      resetTracks();
+      player.load();
+      modal.style.display = 'none';
+  subWrap.style.display = 'none';
+    }
+    function enterFS(){
+      const el = player;
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else if (el.msRequestFullscreen) el.msRequestFullscreen();
+      else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen(); // iOS video
+    }
+    function exitFS(){
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      else if (document.msExitFullscreen) document.msExitFullscreen();
+    }
+    function toggleFS(){
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+      if (fsEl) exitFS(); else enterFS();
+    }
+    function dlCurrent(){ if(!current) return; const a=document.createElement('a'); a.href='/' + current.file; a.download=current.name; a.click(); }
+
+    subSel.addEventListener('change', ()=>{
+      const val = subSel.value;
+      for(const tr of player.textTracks) tr.mode = 'disabled';
+      if(val==='off') return;
+      let el = [...player.querySelectorAll('track')].find(t=>t.src === val);
+      if(!el) el = addSubTrack('English', val);
+      el.mode = 'showing';
+      for(const t of player.textTracks){ if(t.label==='English') t.mode='showing'; }
+    });
+
+    q.addEventListener('input', e=>apply(e.target.value));
+    sortSel.addEventListener('change', ()=>apply(q.value));
+    window.addEventListener('keydown', e=>{ if(e.key==='Escape') closeVideo(); });
+  modal.addEventListener('click', e=>{ if(e.target===modal) closeVideo(); });
+  document.getElementById('fsBtn').addEventListener('click', toggleFS);
+
+  function setVh(){ document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`); }
+  window.addEventListener('resize', setVh); window.addEventListener('orientationchange', setVh); setVh();
+
+    scanMovies();
+  </script>
+</body>
+</html>

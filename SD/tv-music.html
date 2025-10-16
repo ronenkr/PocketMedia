@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <style>
+    :root{--bg:#0b1220;--text:#e5e7eb;--muted:#94a3b8;--panel:#0f172a;--border:#1e2a3f;--shadow:0 10px 30px rgba(0,0,0,.3);--radius:12px}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+    header{padding:20px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:linear-gradient(180deg,#0b1220,#0b1220f2);backdrop-filter:saturate(140%) blur(6px);z-index:10}
+    a.back{color:#e5e7eb;text-decoration:none;background:#111827;border:1px solid var(--border);padding:.45rem .7rem;border-radius:8px}
+    .toolbar{display:flex;gap:.6rem;flex-wrap:wrap;padding:10px 16px;background:#0c1428;border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:sticky;top:64px;z-index:9}
+    .toolbar input{background:#0f1a32;border:1px solid #223049;color:#e5e7eb;border-radius:8px;padding:.5rem .6rem;flex:1 1 260px}
+    main{flex:1;max-width:900px;margin:0 auto;width:100%;padding:16px}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .item{background:#0f1a32;border:1px solid #23324c;border-radius:10px;padding:10px;cursor:pointer}
+    .player{position:fixed;left:0;right:0;bottom:0;background:#0f172a;border-top:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:8px}
+    .controls{display:flex;gap:8px;justify-content:center}
+    button{background:#1a2a44;color:#e5e7eb;border:1px solid #2a3a58;padding:.45rem .7rem;border-radius:8px;cursor:pointer}
+    .progress{height:8px;background:#23324c;border-radius:6px;overflow:hidden;cursor:pointer}
+    .bar{height:100%;width:0;background:#3b82f6}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Music</h1>
+    <a class="back" href="tv.html">← Hub</a>
+  </header>
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Search songs…" aria-label="Search songs">
+  </div>
+  <main>
+    <div id="list" class="list"></div>
+  </main>
+  <div class="player">
+    <div id="now">No song playing</div>
+    <div id="prog" class="progress"><div id="bar" class="bar"></div></div>
+    <div class="controls">
+      <button id="prev">⏮ Prev</button>
+      <button id="play">▶️ / ⏸</button>
+      <button id="next">⏭ Next</button>
+      <button id="dl">⬇️</button>
+    </div>
+    <audio id="audio"></audio>
+  </div>
+  <script>
+    const listEl=document.getElementById('list');
+    const q=document.getElementById('q');
+    const audio=document.getElementById('audio');
+    const now=document.getElementById('now');
+    const bar=document.getElementById('bar');
+    const prog=document.getElementById('prog');
+    const btnPrev=document.getElementById('prev');
+    const btnPlay=document.getElementById('play');
+    const btnNext=document.getElementById('next');
+    const btnDl=document.getElementById('dl');
+    let songs=[], view=[], idx=0;
+
+    function mediaUrl(p){return `${encodeURIComponent('/'+p)}`}
+    async function list(path){ const res=await fetch(path); const html=await res.text(); const doc=new DOMParser().parseFromString(html,'text/html'); const links=[...doc.querySelectorAll('a')].map(a=>a.getAttribute('href')).filter(Boolean); return links.filter(h=>!h.startsWith('?')&&!h.startsWith('/')).map(h=>decodeURIComponent(h)); }
+    async function scan(){ const base='Music/'; const entries=await list(base); songs=entries.filter(n=>/\.(mp3|flac|ogg|wav|m4a)$/i.test(n)).map(n=>({name:n.replace(/\.[^/.]+$/, ''), file: base+n})).sort((a,b)=>a.name.localeCompare(b.name)); apply(''); }
+    function apply(term){ const t=term.trim().toLowerCase(); view=songs.filter(s=>!t||s.name.toLowerCase().includes(t)); render(); }
+    function render(){ const frag=document.createDocumentFragment(); view.forEach((s,i)=>{ const d=document.createElement('div'); d.className='item'; d.textContent=s.name; d.onclick=()=>playByIndex(i); frag.appendChild(d); }); listEl.innerHTML=''; listEl.appendChild(frag); }
+    function playByIndex(i){ idx=i; const s=view[idx]; if(!s) return; audio.src=mediaUrl(s.file); audio.play(); now.textContent='Now Playing: '+s.name; }
+    function next(){ idx=(idx+1)%view.length; playByIndex(idx); }
+    function prev(){ idx=(idx-1+view.length)%view.length; playByIndex(idx); }
+    function toggle(){ if(audio.paused) audio.play(); else audio.pause(); }
+    function download(){ const s=view[idx]; if(!s) return; const a=document.createElement('a'); a.href='/' + s.file; a.download=s.name; a.click(); }
+    audio.addEventListener('timeupdate',()=>{ if(!audio.duration) return; bar.style.width=((audio.currentTime/audio.duration)*100)+'%'; });
+    prog.addEventListener('click',e=>{ const rect=prog.getBoundingClientRect(); const x=e.clientX-rect.left; const pct=Math.max(0,Math.min(1,x/rect.width)); if(audio.duration) audio.currentTime=pct*audio.duration; });
+    btnPrev.onclick=prev; btnNext.onclick=next; btnPlay.onclick=toggle; btnDl.onclick=download; audio.addEventListener('ended',next);
+    q.addEventListener('input',e=>apply(e.target.value));
+    scan();
+  </script>
+</body>
+</html>
