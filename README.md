@@ -1,3 +1,5 @@
+![PocketMedia](PocketMedia.png)
+
 # Offline Android TV Media Server
 
 An offline media server for an Android TV box. It creates a Wi‑Fi hotspot at 192.168.50.1 and serves Shows, Movies, and Music from external storage. The box can still be used as a regular Android TV, based on the Mortal T1 TVBOX
